@@ -7,72 +7,80 @@ end
 # board class creates maker board and contains methods to compare breaker with maker
 class Board
   include CodeRange
-  @@turn_count = 1
-  @@winner = false
-  @@match = ''
-  @@partial = ''
-
-  attr_accessor :maker_board, :breaker_board
+  attr_accessor :maker_board, :turn_count
 
   def initialize
-    @maker_board = Array.new
+    @maker_board = []
+    @winner = false
+    @match = 0
+    @partial = 0
+    @player = Player.new
+    @ai = AI.new
+    @turn_count = 1
   end
 
   # computer creates code in maker array
-  def computer_maker(range)
+  def computer_maker
     i = 1
-    while i <=4 do
-      value = range.sample
+    while i <= 4 do
+      value = CodeRange::RANGE.sample
       @maker_board << value
       i += 1
     end
   end
 
   def check_winner
-    if @maker_board == player.input_code
-      @@turn_count = 13
-      @@winner = true
+    if @maker_board == @player.input_code
+      @turn_count = 13
+      @winner = true
     end
   end
 
   def check_match
+    @match = 0
     @maker_board.each_with_index do |a, i|
-      player.input_code.each_with_index do |b, j|
+      @player.input_code.each_with_index do |b, j|
         if a == b && i == j
-          @@match += 1
+          @match += 1
         end
       end
     end
+    puts "Match: #{@match}"
   end
 
   def check_partial
+    @partial = 0
     @maker_board.each_with_index do |a, i|
-      player.input_code.each_with_index do |b, j|
+      @player.input_code.each_with_index do |b, j|
         if a == b && i != j
-          @@partial += 1
+          @partial += 1
         end
       end
     end
+    puts "Partial: #{@partial}"
   end
 
-  def result(result)
-    if result == true
+  def result
+    if @winner == true
       puts 'congratulations, you solved it!'
     else
-      puts 'better luck next time!'
+      puts "The code was #{@maker_board.join}"
+      puts 'Better luck next time!'
     end
   end
 
-  def play_again(answer)
-    case answer
-    when "Y"
-      # Board.new
-      # Player.new
-      # play_game
-    else
-      # puts 'thanks for playing'
+  def play_game
+    self.computer_maker
+    until self.turn_count >= 12
+      @player.get_values
+      self.check_winner
+      self.check_match
+      self.check_partial
+      self.turn_count += 1
     end
+    self.result
   end
+
 end
 
 # player class creates instance for the player and validates player input
@@ -80,15 +88,18 @@ class Player
 attr_accessor :input_code, :name, :choice
 
   def initialize
+    puts 'What is your name?'
     @name = gets.chomp
+    puts 'Enter 1 to be the code breaker or 2 to be the code maker.'
     @choice = gets.chomp
-    @input_code
+    @input_code = []
+    @turn = 1
   end
 
   # prompt user to enter code and validate: 4 characters from ASCII 1 to 6
   # add validated input to @input_code 
   def get_values
-    puts "#{@name}, enter your code: four numbers in a row on one line"
+    puts "Turn: #{@turn} - #{@name}, enter your code: four numbers in a row on one line"
     input = gets.chomp
     input_ascii = input.each_byte.to_a
     until input.length == 4 && input_ascii.all? { |e| e >= 49 && e <= 54}
@@ -97,34 +108,12 @@ attr_accessor :input_code, :name, :choice
       input_ascii = input.each_byte.to_a
     end
     @input_code = input.split('')
-  end 
+    @turn += 1
+  end
+end 
 
 class AI
   include CodeRange
-end
-
-def playgame
-  # board.computer_maker(CodeRange::RANGE)
-  # loop 12 times
-    # puts 'breaker, enter your four values'
-    # gets values - make sure they are valid
-    # add values to board - breaker_array
-    # compare breaker array to maker array
-      # if maker = breaker
-        # turn count = 12, winner = true
-      # elsif match 
-        # += match
-      # elsif partial
-        # += partial
-      # else 
-        # match = '' and partial = ''
-    # turn_count += 1
-
-# board.winner(@@winner)
-  # if player.winner = true
-    # puts 'congrats you did it!'
-  # else 
-    # puts 'better luck next time'
 end
 
 # instructions
@@ -134,7 +123,17 @@ puts 'The code maker creates a 4 digit code using numbers from 1 to 6. Duplicate
 puts 'The code breaker has to guess the exact code in under 12 turns, receiving hints each turn.'
 puts 'Hints: "match" = correct value and position; "partial" = correct value, incorrect position.'
 puts 'Can you beat the machine? Good luck!'
+puts "\r\n"
 
-game = Board.new
-player = Player.new
-play_game
+board = Board.new
+board.play_game
+
+puts 'Enter Y to play again or N to end.'
+answer = gets.chomp
+case answer
+when 'Y' || 'y'
+  board = Board.new
+  board.play_game
+else
+  puts 'Thanks for playing!'
+end
