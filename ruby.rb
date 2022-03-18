@@ -1,190 +1,192 @@
-# Code range comprised of strings so user-entered values can be directly
-# compared with computer selected values from this range
-module CodeRange
+# module containing possible code values and player input/validation
+module Common
   RANGE = ['1','2','3','4','5','6']
+
+  def player_input
+    puts 'Enter your code: four numbers (1 through 6) in a row on one line'
+    input = gets.chomp
+    input_ascii = input.each_byte.to_a
+    until input.length == 4 && input_ascii.all? { |e| e >= 49 && e <= 54 }
+      puts 'make sure you have entered a valid code!'
+      input = gets.chomp
+      input_ascii = input.each_byte.to_a
+    end
+    @player_input_code = input.split('')
+  end
 end
 
-# board class creates maker board and contains methods to compare breaker with maker
+# board class creates instances of player maker/breaker classes
+# and has methods for setting instance variables, evaluating guesses, winners and executing the game
 class Board
-  include CodeRange
+  include Common
   attr_accessor :maker_board, :turn_count, :breaker
 
   def initialize
     @maker_board = []
+    @breaker_board = []
     @winner = false
     @match = 0
     @partial = 0
-    @player = Player.new
-    @ai = AI.new
+    @player_breaker = PlayerBreaker.new
+    @player_maker = PlayerMaker.new
+    puts 'Enter 1 to be the code breaker or 2 to be the code maker.'
+    @player_choice = gets.chomp
     @turn_count = 1
-    @breaker = nil
   end
 
-  def select_breaker
-    if @player.choice == '2'
-      @breaker = @ai.input_code
-      @maker_board = @player.input_code
-    elsif @player.choice == '1'
-      @breaker = @player.input_code
-    end
+  # if player is breaker, set instance variables
+  def player_is_breaker
+      @breaker_board = @player_breaker.player_input_code     
+  end
+  
+  # if player is maker, set instance variables
+  def player_is_maker
+    @maker_board = @player_maker.player_input_code
+    @breaker_board = @player_maker.ai_input_code
   end
 
-  # computer creates code in maker array
+  # computer generated code
   def computer_maker
     i = 1
     while i <= 4 do
-      value = CodeRange::RANGE.sample
+      value = Common::RANGE.sample
       @maker_board << value
       i += 1
     end
   end
 
+  # check if there is a correct code guess
   def check_winner
-    if @maker_board == @breaker
+    if @maker_board == @breaker_board
       @turn_count = 13
       @winner = true
     end
   end
 
-  def check_match
+  # check it any matches or partials
+  def check_match_partial
     @match = 0
-    @maker_board.each_with_index do |a, i|
-      @breaker.each_with_index do |b, j|
-        if a == b && i == j
-          @match += 1
-        end
-      end
-    end
-    puts "Match: #{@match}"
-  end
-
-  def check_partial
     @partial = 0
     @maker_board.each_with_index do |a, i|
-      @breaker.each_with_index do |b, j|
-        if a == b && i != j
+      @breaker_board.each_with_index do |b, j|
+        if a == b && i == j
+          @match += 1
+        elsif a == b && i != j
           @partial += 1
         end
       end
     end
+    puts "Match: #{@match}"
     puts "Partial: #{@partial}"
+    puts "\r\n"
   end
 
+  # determine if there is a winner
   def result
-    if @player.choice == '1'
+    case @player_choice
+    when '1'
       if @winner == true
         puts 'congratulations, you solved it!'
       else
-      puts "The code was #{@maker_board.join}"
-      puts 'Better luck next time!'
+        puts "The code was #{@maker_board.join}. Better luck next time!"
       end
-    elsif @player.choice == '2'
+    else
       if @winner == true
-        puts 'The machine figure out your code!'
+        puts 'The machine figured out your code!'
       else
         puts 'You beat the machine!'
       end
     end
   end
 
-  # condense the select breaker..urn count into a game_run def and call that instead
-  def play_game
-    if @player.choice == '2'
-      @player.maker_values
-      @ai.first_try
-      self.select_breaker
-      self.check_winner
-      self.check_match
-      self.check_partial
-      self.turn_count += 1
-      until self.turn_count >= 12
-        @ai.solve
-        self.select_breaker
-        self.check_winner
-        self.check_match
-        self.check_partial
-        self.turn_count += 1
-      end
-      self.result
+  # determine which play method to execute
+  def decide_play_method
+    case @player_choice
+    when '1'
+      play_player_breaker
     else
-    self.computer_maker
-    until self.turn_count >= 12
-      @player.breaker_values
-      self.select_breaker
-      self.check_winner
-      self.check_match
-      self.check_partial
-      self.turn_count += 1
+      play_player_maker
     end
-    self.result
+  end
+
+  # execute if player is code maker
+  def play_player_breaker
+    computer_maker
+    until @turn_count >= 12
+      puts "Turn: #{@turn_count}"
+      @player_breaker.player_input
+      player_is_breaker
+      check_winner
+      check_match_partial
+      @turn_count += 1
     end
+    result
+  end
+
+  # execute if player is code maker
+  def play_player_maker
+    @player_maker.player_input
+    @player_maker.first_guess
+    check_match_partial
+    @turn_count += 1
+    until @turn_count >= 12
+      puts "Turn: #{@turn_count}"
+      @player_maker.solve
+      player_is_maker
+      check_winner
+      check_match_partial
+      @turn_count += 1
+    end
+    result
   end
 end
 
-# player class creates instance for the player and validates player input
-class Player
-attr_accessor :input_code, :name, :choice
+# Player is the code breaker
+class PlayerBreaker
+  include Common
+  attr_accessor :player_input_code
 
   def initialize
-    puts 'What is your name?'
-    @name = gets.chomp
-    puts 'Enter 1 to be the code breaker or 2 to be the code maker.'
-    @choice = gets.chomp
-    @input_code = []
-    @turn = 1
+    @player_input_code = []
   end
+end
 
-  # prompt user to enter code and validate: 4 characters from ASCII 1 to 6
-  # add validated input to @input_code 
-  def breaker_values
-    puts "Turn: #{@turn} - #{@name}, enter your code: four numbers in a row on one line"
-    input = gets.chomp
-    input_ascii = input.each_byte.to_a
-    until input.length == 4 && input_ascii.all? { |e| e >= 49 && e <= 54}
-      puts 'make sure you have entered a valid code!'
-      input = gets.chomp
-      input_ascii = input.each_byte.to_a
-    end
-    @input_code = input.split('')
-    @turn += 1
-  end
-
-  def maker_values
-    puts "#{@name}, enter the code for the computer to guess: four numbers (1-6) in a row."
-    input = gets.chomp
-    input_ascii = input.each_byte.to_a
-    until input.length == 4 && input_ascii.all? { |e| e >= 49 && e <= 54}
-      puts 'make sure you have entered a valid code or the computer will get upset!'
-      input = gets.chomp
-      input_ascii = input.each_byte.to_a
-    end
-    @input_code = input.split('')
-  end
-end 
-
-class AI
-  include CodeRange
-
-  attr_accessor :input_code
+# player is the code maker
+class PlayerMaker
+  include Common
+  attr_accessor :player_input_code, :ai_input_code
 
   def initialize
-    @input_code = []
-    @turn = 1
+    @player_input_code = []
+    @ai_input_code = []
   end
 
-  def first_try
+  # first guess - all four values are the same
+  def first_guess
+    value = Common::RANGE.sample
     i = 1
     while i <= 4 do
-      value = CodeRange::RANGE.sample
-      @input_code << value
+      @ai_input_code << value
       i += 1
     end
-    print @input_code
-    @turn += 1
+    puts "Computer guessed: #{@ai_input_code}"
   end
 
+  # keeps matches and picks a new random number for non-matches
   def solve
-    puts 'this is hard'
+    new_guess = []
+    i = 0
+    while i <=3
+      if @player_input_code[i] == @ai_input_code[i]
+        new_guess << @player_input_code[i]
+      else 
+        value = Common::RANGE.sample
+        new_guess << value
+      end
+      i += 1
+    end
+    @ai_input_code = new_guess
+    puts "Computer guessed: #{@ai_input_code}"
   end
 end
 
@@ -198,14 +200,14 @@ puts 'Can you beat the machine? Good luck!'
 puts "\r\n"
 
 board = Board.new
-board.play_game
+board.decide_play_method
 
 puts 'Enter Y to play again or N to end.'
 answer = gets.chomp
 case answer
 when 'Y' || 'y'
   board = Board.new
-  board.play_game
+  board.decide_play_method
 else
   puts 'Thanks for playing!'
 end
