@@ -3,4 +3,7 @@ This Ruby program is a take on the mastermind boardgame. It is one player versus
 
 This is built using object oriented programming structure and uses a module, three classes, and many different methods for logic. The logic for the computer to figure out the code as "breaker" is simple, but effective enough to guess the code enough times to be fun, but not all the time so that it's boring. The probability of the computer solving the code could be improved by adding all prior guesses to an array and checking that before pushing a new guess...any non-unique guesses would be reavaluated to prevent the same guess pushing twice and wasting a turn.
 
-If you have Ruby installed, you can download the ruby.rb file and run it locally, or play it online here: https://replit.com/@BenJ8/mastermind#main.rb  
+If you have Ruby installed, you can download the ruby.rb file and run it locally, or play it online here: https://replit.com/@BenJ8/mastermind#main.rb 
+
+Game play still:
+![game still](./Images/mastermind.png?raw=true "")
